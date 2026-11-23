@@ -1,0 +1,48 @@
+{
+  "name": "llcc-dms-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:deploy": "prisma migrate deploy",
+    "seed": "node prisma/seed.js",
+    "seed:demo": "node -e \"process.env.DEMO_SEED='true'; import('./prisma/seed.js')\"",
+    "setup": "npm run prisma:generate && npm run prisma:deploy && npm run seed",
+    "setup:fresh": "prisma generate && prisma migrate deploy && node prisma/seed.js",
+    "test:api": "node test-advanced.mjs",
+    "test:contract": "node ../tests/api-contract.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "6.7.0",
+    "adm-zip": "^0.6.1",
+    "archiver": "^8.0.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.2.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "exceljs": "^4.4.0",
+    "express": "^5.3.0",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "jszip": "^3.10.2",
+    "mammoth": "^1.13.0",
+    "mime-types": "^3.0.2",
+    "morgan": "^1.12.1",
+    "multer": "^2.5.0",
+    "pdfkit": "^0.21.0",
+    "prisma": "6.7.0",
+    "qrcode": "^1.5.4",
+    "uuid": "^14.0.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

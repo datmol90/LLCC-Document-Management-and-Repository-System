@@ -1,0 +1,57 @@
+/* Page-only styles for the Documents library and its form modal. */
+.docs-card .card__body { padding: 0; }
+
+.docs-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 20px;
+  background: var(--slate-50);
+  border-bottom: 1px solid var(--slate-100);
+}
+.docs-count { font-size: 12px; color: var(--slate-500); }
+.docs-count strong { color: var(--navy-900); font-size: 13px; }
+.docs-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.docs-chips .chip { cursor: pointer; border: 0; }
+.docs-chips .chip:hover { background: var(--blue-100); color: var(--navy-800); }
+
+.status-cell { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.table .doc-title {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-weight: 650;
+  color: var(--navy-900);
+  text-align: left;
+}
+.table .doc-title:hover { color: var(--navy-600); }
+.table--documents td { white-space: nowrap; }
+.table--documents .file-cell__text small { white-space: nowrap; }
+.doc-ref {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: var(--slate-600);
+}
+
+.docs-empty-actions { display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }
+
+.form-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--red-bg);
+  color: var(--red);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  margin-bottom: 16px;
+}
+.field-error { color: var(--red); font-size: 11px; }
+.file-hint { display: inline-flex; align-items: center; gap: 5px; color: var(--slate-500); font-size: 11px; }
+
+@media (max-width: 620px) {
+  .docs-summary { padding: 10px 14px; }
+  .table--documents td { min-width: 120px; }
+}

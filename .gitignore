@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.log
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+backend/prisma/dev.db-wal
+backend/prisma/dev.db-shm
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/backups/*
+backend/tmp-test/
+tests/tmp/
+.DS_Store

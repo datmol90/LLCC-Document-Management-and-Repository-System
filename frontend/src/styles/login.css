@@ -1,0 +1,17 @@
+.input-with-icon--toggle input { padding-right: 42px !important; }
+.password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--slate-400);
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+}
+.password-toggle:hover { color: var(--navy-700); background: var(--slate-100); }
+.login-submit { height: 44px; margin-top: 4px; }

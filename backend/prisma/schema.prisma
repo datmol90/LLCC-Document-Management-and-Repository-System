@@ -1,0 +1,345 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  DEAN
+  DEPARTMENT_HEAD
+  STAFF
+}
+
+enum DocumentStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+  ARCHIVED
+  FINAL_REVIEW
+}
+
+enum ApprovalStatus {
+  PENDING
+  STAGE1_APPROVED
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+enum NotificationType {
+  APPROVAL
+  REJECTION
+  REVISION_REQUESTED
+  DOCUMENT_UPDATE
+  EXPIRATION
+  SYSTEM
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          Role
+  departmentId  String?
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  documents     Document[]     @relation("UploadedDocuments")
+  revisions     DocumentVersion[] @relation("RevisionAuthor")
+  approvals     Approval[]     @relation("ApprovalActor")
+  auditLogs     AuditLog[]
+  notifications Notification[] @relation("UserNotifications")
+  actedNotifications Notification[] @relation("ActorNotifications")
+  backups       Backup[]
+  archivedDocuments ArchivedDocument[] @relation("ArchiveActor")
+  restoredArchives  ArchivedDocument[] @relation("ArchiveRestorer")
+  deletedDocuments  DeletedDocument[]  @relation("DeleteActor")
+  restoredDeletions DeletedDocument[]  @relation("DeleteRestorer")
+  passwordResets    PasswordResetToken[]
+  revokedTokens     RevokedToken[]
+  announcements     Announcement[]
+
+  @@index([role])
+}
+
+model Department {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  code        String     @unique
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  users       User[]
+  documents   Document[]
+}
+
+model Document {
+  id              String            @id @default(cuid())
+  title           String
+  description     String?
+  category        String
+  status          DocumentStatus    @default(DRAFT)
+  departmentId    String
+  department      Department        @relation(fields: [departmentId], references: [id])
+  uploaderId      String
+  uploader        User              @relation("UploadedDocuments", fields: [uploaderId], references: [id])
+  currentVersionId String?          @unique
+  currentVersion  DocumentVersion?  @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  revisionCount   Int               @default(0)
+  latestFileName  String?
+  latestMimeType  String?
+  latestFileSize  Int?
+  latestStoragePath String?
+  // Advanced features
+  verificationCode String?          @unique
+  expiresAt        DateTime?
+  expiredNotifiedAt DateTime?
+  deletedAt        DateTime?        // recycle bin marker (soft delete)
+  // Catalog + metadata extensions
+  referenceNumber  String?          @unique
+  documentType     String?
+  keywords         String?          // comma separated
+  reviewDate       DateTime?
+  renewalStatus    String?          @default("NONE")
+  requiresFinalApproval Boolean     @default(false)
+  categoryId       String?
+  documentCategory DocumentCategory? @relation(fields: [categoryId], references: [id])
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  versions        DocumentVersion[] @relation("DocumentVersions")
+  approvals       Approval[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  verificationLogs VerificationLog[]
+  archivedRecords ArchivedDocument[]
+  deletionRecords DeletedDocument[]
+
+  @@index([title])
+  @@index([category])
+  @@index([categoryId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([updatedAt])
+  @@index([deletedAt])
+  @@index([expiresAt])
+  @@index([documentType])
+  @@index([renewalStatus])
+}
+
+model Backup {
+  id          String    @id @default(cuid())
+  fileName    String
+  storagePath String
+  fileSize    Int
+  kind        String    @default("FULL") // FULL | DB_ONLY
+  status      String    @default("COMPLETED") // COMPLETED | FAILED
+  scope       String?   // scope summary, e.g. "db + uploads"
+  notes       String?
+  checksum    String?
+  verified    Boolean   @default(false)
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+}
+
+model DocumentVersion {
+  id            String    @id @default(cuid())
+  documentId    String
+  document      Document  @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  fileName      String
+  originalName  String
+  mimeType      String
+  fileSize      Int
+  storagePath   String
+  changeNotes   String?
+  createdById   String
+  createdBy     User      @relation("RevisionAuthor", fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now())
+  isCurrent     Boolean   @default(false)
+  currentFor    Document? @relation("CurrentVersion")
+
+  @@unique([documentId, versionNumber])
+  @@index([documentId])
+}
+
+model Approval {
+  id          String         @id @default(cuid())
+  documentId  String
+  document    Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  status      ApprovalStatus @default(PENDING)
+  submittedById String
+  reviewedById  String?
+  reviewedBy    User?        @relation("ApprovalActor", fields: [reviewedById], references: [id])
+  comments    String?
+  createdAt   DateTime       @default(now())
+  reviewedAt  DateTime?
+
+  @@index([documentId])
+  @@index([status])
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  action      String
+  entityType  String
+  entityId    String?
+  documentId  String?
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  details     String?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@index([userId])
+  @@index([documentId])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actorId     String?
+  actor       User?            @relation("ActorNotifications", fields: [actorId], references: [id])
+  documentId  String?
+  document    Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model VerificationLog {
+  id            String    @id @default(cuid())
+  code          String
+  documentId    String?
+  document      Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  result        String // VALID | NOT_FOUND | NOT_APPROVED | EXPIRED | ARCHIVED
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+
+  @@index([code])
+  @@index([createdAt])
+  @@index([result])
+}
+
+/* --------------------- Catalog / metadata tables --------------------- */
+
+/// Roles catalog. Named `RoleCatalog` in Prisma because the legacy `Role`
+/// enum is still used by `User.role`; both map to the "Role" SQL table/concept.
+model RoleCatalog {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  level       Int
+  description String?
+
+  @@map("Role")
+}
+
+model DocumentCategory {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  isActive    Boolean    @default(true)
+  documents   Document[]
+}
+
+/** Metadata-only archive history. Never stores a copy of the document. */
+model ArchivedDocument {
+  id           String    @id @default(cuid())
+  documentId   String?
+  document     Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  archivedById String
+  archivedBy   User      @relation("ArchiveActor", fields: [archivedById], references: [id])
+  reason       String?
+  createdAt    DateTime  @default(now())
+  restoredAt   DateTime?
+  restoredById String?
+  restoredBy   User?     @relation("ArchiveRestorer", fields: [restoredById], references: [id])
+
+  @@index([documentId])
+  @@index([archivedById])
+  @@index([createdAt])
+}
+
+/** Metadata-only recycle-bin audit history. Never stores a copy of the document. */
+model DeletedDocument {
+  id           String    @id @default(cuid())
+  documentId   String?
+  document     Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  deletedById  String
+  deletedBy    User      @relation("DeleteActor", fields: [deletedById], references: [id])
+  deletedAt    DateTime  @default(now())
+  reason       String?
+  restoredAt   DateTime?
+  restoredById String?
+  restoredBy   User?     @relation("DeleteRestorer", fields: [restoredById], references: [id])
+
+  @@index([documentId])
+  @@index([deletedById])
+  @@index([deletedAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/** id stores the JWT `jti`; presence means that token has been revoked. */
+model RevokedToken {
+  id        String    @id
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  pinned      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([pinned])
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
