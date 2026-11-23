@@ -9,6 +9,7 @@ const RENEWAL_STATUSES = ['NONE', 'PENDING', 'RENEWED', 'EXPIRED', 'UNDER_REVIEW
 const OTHER = '__other__';
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const ACCEPTED_FILES = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png';
+const COLLEGE_NAMES = ['College of Education', 'College of Technology', 'College of Hospitality and Tourism Management'];
 
 const EMPTY_FORM = {
   title: '',
@@ -218,10 +219,13 @@ export default function DocumentFormModal({ open, onClose, document, onSaved }) 
             <div className="field">
               <label htmlFor="doc-department">Department *</label>
               <select id="doc-department" value={form.departmentId} onChange={(e) => setField('departmentId', e.target.value)}>
-                <option value="">Select department</option>
-                {departments.map((department) => (
-                  <option key={department.id} value={department.id}>{department.name}</option>
-                ))}
+                <option value="">Select college</option>
+                {departments.map((department) => {
+                  if (COLLEGE_NAMES.includes(department.name)) {
+                    return <option key={department.id} value={department.id}>{department.name}</option>;
+                  }
+                  return null;
+                })}
               </select>
               {errors.department && <small className="field-error">{errors.department}</small>}
             </div>
@@ -234,48 +238,14 @@ export default function DocumentFormModal({ open, onClose, document, onSaved }) 
                 ))}
                 <option value={OTHER}>Other</option>
               </select>
-              {form.categoryOption === OTHER && (
-                <input
-                  value={form.categoryText}
-                  onChange={(e) => setField('categoryText', e.target.value)}
-                  placeholder="Enter category name"
-                  style={{ marginTop: 6 }}
-                />
-              )}
+              {form.categoryOption === OTHER && <input value={form.categoryText} onChange={(e) => setField('categoryText', e.target.value)} placeholder="Enter category name" style={{ marginTop: 6 }} />}
               {errors.category && <small className="field-error">{errors.category}</small>}
             </div>
-          </div>
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="doc-type">Document type</label>
-              <select id="doc-type" value={form.documentType} onChange={(e) => setField('documentType', e.target.value)}>
-                <option value="">Select type</option>
-                {DOCUMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-              </select>
-              {form.documentType === OTHER && (
-                <input
-                  value={form.documentTypeText}
-                  onChange={(e) => setField('documentTypeText', e.target.value)}
-                  placeholder="Enter document type"
-                  style={{ marginTop: 6 }}
-                />
-              )}
-              {errors.documentType && <small className="field-error">{errors.documentType}</small>}
-            </div>
-            <div className="field">
-              <label htmlFor="doc-reference">Reference number</label>
-              <input id="doc-reference" value={form.referenceNumber} onChange={(e) => setField('referenceNumber', e.target.value)} placeholder="Optional" />
-              <small className="file-hint">Leave blank to auto-generate a reference number.</small>
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="doc-keywords">Keywords</label>
-            <input id="doc-keywords" value={form.keywords} onChange={(e) => setField('keywords', e.target.value)} placeholder="comma, separated, keywords" />
           </div>
         </section>
 
         <section className="form-section">
-          <h4>Dates &amp; review</h4>
+          <h4>Dates & review</h4>
           <div className="field-row">
             <div className="field">
               <label htmlFor="doc-expires">Expiry date</label>
@@ -306,10 +276,6 @@ export default function DocumentFormModal({ open, onClose, document, onSaved }) 
               </select>
             </div>
           </div>
-          <label className="checkbox">
-            <input type="checkbox" checked={form.requiresFinalApproval} onChange={(e) => setField('requiresFinalApproval', e.target.checked)} />
-            Requires final approval before publication
-          </label>
         </section>
 
         <section className="form-section">

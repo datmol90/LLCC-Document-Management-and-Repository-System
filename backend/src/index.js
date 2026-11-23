@@ -15,7 +15,6 @@ import notificationRoutes from './routes/notifications.js';
 import auditRoutes from './routes/audit.js';
 import reportRoutes from './routes/reports.js';
 import verificationRoutes from './routes/verification.js';
-import assistantRoutes from './routes/assistant.js';
 import backupRoutes from './routes/backups.js';
 import catalogRoutes from './routes/catalog.js';
 import { startExpirationScheduler } from './utils/expirationScheduler.js';
@@ -41,9 +40,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit-logs', auditRoutes);
-app.use('/api/reports', reportRoutes);
 app.use('/api', verificationRoutes);        // /api/verify/:code (public) + /api/verification-logs
-app.use('/api/assistant', assistantRoutes);
 app.use('/api/backups', backupRoutes);
 app.use('/api', catalogRoutes);         // /api/categories, /api/roles, /api/settings, /api/announcements
 

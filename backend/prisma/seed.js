@@ -10,24 +10,27 @@ if (!process.env.DATABASE_URL || process.env.DATABASE_URL.startsWith('file:./'))
   process.env.DATABASE_URL = `file:${dbPath}`;
 }
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient;
 
-const departments = [
-  { name: 'College Administration', code: 'ADMIN', description: 'College-wide administration' },
-  { name: 'Information Technology', code: 'IT', description: 'Information technology programs and services' },
-  { name: 'Education', code: 'EDUC', description: 'Teacher education programs' },
-  { name: 'Business Administration', code: 'BA', description: 'Business and management programs' },
-  { name: 'Registrar', code: 'REG', description: 'Registration and student records' },
-  { name: 'Finance', code: 'FIN', description: 'Finance and accounting' },
-  { name: 'Human Resources', code: 'HR', description: 'Human resources' },
+// **EXACTLY THREE ACADEMIC COLLEGES** (per official LLCC organizational structure)
+const colleges = [
+  { name: 'College of Education', code: 'CED', description: 'Teacher education and programs' },
+  { name: 'College of Technology', code: 'CT', description: 'Technology and industrial programs' },
+  { name: 'College of Hospitality and Tourism Management', code: 'CHTM', description: 'Hospitality and tourism management programs' },
 ];
 
-// Existing installations seeded with the original three colleges are migrated
-// in place so documents and users keep their department references.
-const legacyDepartmentMap = [
-  { from: 'CCS', to: 'IT' },
-  { from: 'CBA', to: 'BA' },
-  { from: 'COE', to: 'EDUC' },
+// **SUPPORT OFFICES** (separate from academic colleges - configurable)
+const supportOffices = [
+  { name: 'Office of the College Administrator', code: 'ADMIN', description: 'College-wide administrative oversight' },
+  { name: "Registrar's Office", code: 'REG', description: 'Registration and student records' },
+  { name: 'Student Affairs and Services Office (SASO)', code: 'SASO', description: 'Student services and organizations' },
+  { name: 'Library Services', code: 'LIB', description: 'Library and academic resources' },
+  { name: 'Administrative Services', code: 'ADM', description: 'General administration and facilities' },
+  { name: 'Finance and Accounting', code: 'FIN', description: 'Finance and accounting services' },
+  { name: 'Human Resources', code: 'HR', description: 'Human resources management' },
+  { name: 'Information Technology Services', code: 'IT', description: 'IT infrastructure and support' },
+  { name: 'Records Management', code: 'RM', description: 'Records and documentation' },
+  { name: 'Quality Assurance', code: 'QA', description: 'Quality assurance and research' },
 ];
 
 const roles = [
@@ -50,18 +53,45 @@ const categories = [
 ];
 
 async function main() {
+  // **Upload the exact 3 colleges first** - create them as new records
+  for (const c of colleges) {
+    await prisma.department.upsert({ where: { code: c.code }, update: { name: c.name, description: c.description, isActive: true }, create: c });
+  }
+
+  // **Upload support offices** - separate from academic colleges
+  for (const s of supportOffices) {
+    await prisma.department.upsert({ where: { code: s.code }, update: { name: s.name, description: s.description, isActive: true }, create: s });
+  }
+
+  // **MIGRATE EXISTING DEPARTMENTS** - map old department codes to new college/support codes
+  // Now that colleges and support offices exist, remap old department records
+  // and update all foreign keys (documents, users) to point to the new departments
+  const legacyDepartmentMap = [
+    { from: 'EDUC', to: 'CED' },   // Education -> College of Education
+    { from: 'BA', to: 'CT' },      // Business Administration -> College of Technology
+    { from: 'IT', to: 'CT' },      // Information Technology -> College of Technology
+  ];
+
   for (const legacy of legacyDepartmentMap) {
     const source = await prisma.department.findUnique({ where: { code: legacy.from } });
     const target = await prisma.department.findUnique({ where: { code: legacy.to } });
-    if (source && !target) {
-      const definition = departments.find((d) => d.code === legacy.to);
-      await prisma.department.update({ where: { id: source.id }, data: definition });
-      console.log(`Migrated legacy department ${legacy.from} -> ${legacy.to} (records preserved).`);
+    if (source && target && source.id !== target.id) {
+      // Remap all documents from source department to target department
+      await prisma.document.updateMany({
+        where: { departmentId: source.id },
+        data: { departmentId: target.id }
+      });
+      // Remap all users from source department to target department
+      await prisma.user.updateMany({
+        where: { departmentId: source.id },
+        data: { departmentId: target.id }
+      });
+      // Mark the old department as inactive instead of reassigning its code
+      await prisma.department.update({ where: { id: source.id }, data: { isActive: false } });
+      console.log(`Remapped legacy department ${legacy.from} -> ${legacy.to} (documents and users preserved).`);
     }
   }
-  for (const d of departments) {
-    await prisma.department.upsert({ where: { code: d.code }, update: { name: d.name, description: d.description, isActive: true }, create: d });
-  }
+
   for (const r of roles) {
     await prisma.roleCatalog.upsert({ where: { name: r.name }, update: { level: r.level, description: r.description }, create: r });
   }
@@ -85,12 +115,12 @@ async function main() {
   console.log('Bootstrap super admin: admin@llcc.edu / Admin@12345 (change this password after first login).');
 
   if (process.env.DEMO_SEED === 'true') {
-    const it = await prisma.department.findUnique({ where: { code: 'IT' } });
+    const it = await prisma.department.findUnique({ where: { code: 'CT' } });
     const demoHash = await bcrypt.hash('Demo@12345', 10);
     const demoUsers = [
       { name: 'Demo Dean', email: 'dean@llcc.edu', role: 'DEAN', departmentId: null },
-      { name: 'Demo IT Head', email: 'head.it@llcc.edu', role: 'DEPARTMENT_HEAD', departmentId: it?.id || null },
-      { name: 'Demo IT Staff', email: 'staff.it@llcc.edu', role: 'STAFF', departmentId: it?.id || null },
+      { name: 'Demo IT Head', email: 'head.ct@llcc.edu', role: 'DEPARTMENT_HEAD', departmentId: it?.id || null },
+      { name: 'Demo IT Staff', email: 'staff.ct@llcc.edu', role: 'STAFF', departmentId: it?.id || null },
     ];
     for (const u of demoUsers) {
       await prisma.user.upsert({

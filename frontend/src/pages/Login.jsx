@@ -78,7 +78,7 @@ export default function Login() {
         </div>
 
         <div className="login-hero__foot">
-          © {new Date().getFullYear()} Laguna College · Authorized personnel only
+          © {new Date().getFullYear()} Lapu-Lapu City College · Authorized personnel only
         </div>
       </section>
 

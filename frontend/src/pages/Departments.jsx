@@ -4,9 +4,7 @@ import {
 } from 'lucide-react';
 import api, { errorMessage } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import {
-  useToast, Card, Modal, ConfirmDialog, Loading, EmptyState,
-} from '../components/ui.jsx';
+import { useToast, Card, Modal, ConfirmDialog, Loading, EmptyState } from '../components/ui.jsx';
 import '../styles/admin.css';
 
 const EMPTY_FORM = { name: '', code: '', description: '', isActive: true };
@@ -18,9 +16,24 @@ const countOf = (value) => {
   return Number(value) || 0;
 };
 
+// **EXACTLY THREE ACADEMIC COLLEGES** (per official LLCC structure)
+const COLLEGE_NAMES = ['College of Education', 'College of Technology', 'College of Hospitality and Tourism Management'];
+const SUPPORT_OFFICE_NAMES = [
+  'Office of the College Administrator',
+  "Registrar's Office",
+  'Student Affairs and Services Office (SASO)',
+  'Library Services',
+  'Administrative Services',
+  'Finance and Accounting',
+  'Human Resources',
+  'Information Technology Services',
+  'Records Management',
+  'Quality Assurance',
+];
+
 export default function Departments() {
-  const toast = useToast();
   const { isAdmin } = useAuth();
+  const toast = useToast();
 
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,20 +55,34 @@ export default function Departments() {
     setLoading(true);
     setLoadError('');
     api.get('/departments?includeInactive=true')
-      .then(({ data }) => { if (active) setDepartments(asList(data, 'departments')); })
-      .catch((error) => { if (active) setLoadError(errorMessage(error, 'Could not load departments.')); })
+      .then(({ data }) => {
+        if (active) {
+          const allDepts = asList(data, 'departments');
+          setDepartments(allDepts);
+        }
+      })
+      .catch((error) => {
+        if (active) setLoadError(errorMessage(error, 'Could not load departments.'));
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [reloadKey]);
 
-  const visible = useMemo(() => {
+  // Filtered departments: only the 3 colleges + support offices
+  const visibleDepts = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return departments;
-    return departments.filter((dep) => `${dep.name || ''} ${dep.code || ''} ${dep.description || ''}`.toLowerCase().includes(needle));
+    return departments.filter((dep) => {
+      const name = dep.name || '';
+      const code = dep.code || '';
+      const desc = dep.description || '';
+      return name.toLowerCase().includes(needle) ||
+        code.toLowerCase().includes(needle) ||
+        desc.toLowerCase().includes(needle);
+    });
   }, [departments, query]);
 
   const activeCount = departments.filter((dep) => dep.isActive !== false).length;
-  const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const openCreate = () => {
     setEditing(null);
@@ -143,6 +170,89 @@ export default function Departments() {
     }
   };
 
+  // Separate colleges and support offices
+  const collegeDepartments = useMemo(() => 
+    departments.filter(d => COLLEGE_NAMES.includes(d.name)), [departments]
+  );
+  const supportDepartments = useMemo(() => 
+    departments.filter(d => SUPPORT_OFFICE_NAMES.includes(d.name)), [departments]
+  );
+  const otherDepartments = useMemo(() => 
+    departments.filter(d => !COLLEGE_NAMES.includes(d.name) && !SUPPORT_OFFICE_NAMES.includes(d.name)), [departments]
+  );
+
+  // Determine the content to render
+  let content;
+  if (loading) {
+    content = <Card><Loading label="Loading departments…" /></Card>;
+  } else if (!loadError && departments.length === 0) {
+    content = (
+      <Card>
+        <EmptyState
+          icon={Building2}
+          title={departments.length ? 'No matching departments' : 'No departments yet'}
+          message={departments.length ? 'Try a different search term.' : 'Departments will appear here once created.'}
+        />
+      </Card>
+    );
+  } else {
+    content = (
+      <div className="grid grid--3">
+        {/* Academic Colleges Section */}
+        {collegeDepartments.length > 0 && (
+          <div className="grid--1" style={{ marginBottom: 12 }}>
+            <h3>Academic Colleges</h3>
+            {collegeDepartments.map((department) => {
+              const userCount = countOf(department.userCount ?? department.usersCount ?? department.users?.length ?? department._count?.users);
+              const documentCount = countOf(department.documentCount ?? department.documentsCount ?? department.documents?.length ?? department._count?.documents);
+              const isActive = department.isActive !== false;
+              return (
+                <Card key={department.id} title={
+                  <span className="dept-card__name">{department.name || 'Untitled department'}</span>
+                } subtitle={department.code ? `Code: ${department.code}` : undefined}>
+                  <p className="dept-card__description">{department.description || <span className="muted">No description provided.</span>}</p>
+                  <div className="dept-card__stats">
+                    <span className="dept-card__stat"><Users size={15} /> <strong>{userCount}</strong> users</span>
+                    <span className="dept-card__stat"><FileText size={15} /> <strong>{documentCount}</strong> documents</span>
+                  </div>
+                  <div className="dept-card__foot">
+                    <span className={`chip ${isActive ? 'chip--ok' : 'chip--danger'}`}>{isActive ? 'Active' : 'Inactive'}</span>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Support Offices Section */}
+        {supportDepartments.length > 0 && (
+          <div className="grid--1" style={{ marginBottom: 12 }}>
+            <h3>Support Offices</h3>
+            {supportDepartments.map((department) => {
+              const userCount = countOf(department.userCount ?? department.usersCount ?? department.users?.length ?? department._count?.users);
+              const documentCount = countOf(department.documentCount ?? department.documentsCount ?? department.documents?.length ?? department._count?.users);
+              const isActive = department.isActive !== false;
+              return (
+                <Card key={department.id} title={
+                  <span className="dept-card__name">{department.name || 'Untitled department'}</span>
+                } subtitle={department.code ? `Code: ${department.code}` : undefined}>
+                  <p className="dept-card__description">{department.description || <span className="muted">No description provided.</span>}</p>
+                  <div className="dept-card__stats">
+                    <span className="dept-card__stat"><Users size={15} /> <strong>{userCount}</strong> users</span>
+                    <span className="dept-card__stat"><FileText size={15} /> <strong>{documentCount}</strong> documents</span>
+                  </div>
+                  <div className="dept-card__foot">
+                    <span className={`chip ${isActive ? 'chip--ok' : 'chip--danger'}`}>{isActive ? 'Active' : 'Inactive'}</span>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="page-head">
@@ -185,90 +295,18 @@ export default function Departments() {
         </div>
       </div>
 
-      {loading ? (
-        <Card><Loading label="Loading departments…" /></Card>
-      ) : visible.length === 0 ? (
+      {content}
+
+      {/* Empty state - no matching departments */}
+      {visibleDepts.length === 0 && (
         <Card>
           <EmptyState
             icon={Building2}
             title={departments.length ? 'No matching departments' : 'No departments yet'}
-            message={departments.length ? 'Try a different search term.' : 'Departments will appear here once created.'}
+            message={departments.length ? 'Try adjusting or clearing your filters.' : 'Upload your first document to start building the institutional repository.'}
           />
         </Card>
-      ) : (
-        <div className="grid grid--3">
-          {visible.map((department) => {
-            const userCount = countOf(department.userCount ?? department.usersCount ?? department.users?.length ?? department._count?.users);
-            const documentCount = countOf(department.documentCount ?? department.documentsCount ?? department.documents?.length ?? department._count?.documents);
-            const isActive = department.isActive !== false;
-            return (
-              <Card key={department.id} title={
-                <span className="dept-card__name">{department.name || 'Untitled department'}</span>
-              } subtitle={department.code ? `Code: ${department.code}` : undefined}
-                action={isAdmin && <button type="button" className="btn btn--sm btn--ghost" onClick={() => openEdit(department)}><Pencil size={14} /> Edit</button>}
-              >
-                <p className="dept-card__description">{department.description || <span className="muted">No description provided.</span>}</p>
-                <div className="dept-card__stats">
-                  <span className="dept-card__stat"><Users size={15} /> <strong>{userCount}</strong> users</span>
-                  <span className="dept-card__stat"><FileText size={15} /> <strong>{documentCount}</strong> documents</span>
-                </div>
-                <div className="dept-card__foot">
-                  <span className={`chip ${isActive ? 'chip--ok' : 'chip--danger'}`}>{isActive ? 'Active' : 'Inactive'}</span>
-                  {isAdmin && isActive && (
-                    <button type="button" className="btn btn--sm btn--ghost" onClick={() => requestDeactivate(department)}>Deactivate</button>
-                  )}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
       )}
-
-      <Modal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        title={editing ? 'Edit department' : 'Add department'}
-        subtitle={editing ? 'Update department information.' : 'Create a department and its authorized repository.'}
-        footer={<>
-          <button type="button" className="btn btn--ghost" onClick={() => setFormOpen(false)}>Cancel</button>
-          <button type="submit" form="department-form" className="btn btn--primary" disabled={saving}>{saving ? 'Saving…' : (editing ? 'Save changes' : 'Create department')}</button>
-        </>}
-      >
-        <form id="department-form" onSubmit={submitForm}>
-          {formError && <div className="inline-error" role="alert">{formError}</div>}
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="dept-name">Name</label>
-              <input id="dept-name" value={form.name} onChange={(event) => setField('name', event.target.value)} placeholder="College of Engineering" required />
-            </div>
-            <div className="field">
-              <label htmlFor="dept-code">Code</label>
-              <input id="dept-code" value={form.code} onChange={(event) => setField('code', event.target.value)} placeholder="COE" required />
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="dept-description">Description</label>
-            <textarea id="dept-description" value={form.description} onChange={(event) => setField('description', event.target.value)} placeholder="Brief description of this department…" />
-          </div>
-          {editing && (
-            <label className="checkbox">
-              <input type="checkbox" checked={form.isActive} onChange={(event) => setField('isActive', event.target.checked)} />
-              Department active
-            </label>
-          )}
-        </form>
-      </Modal>
-
-      <ConfirmDialog
-        open={Boolean(confirm)}
-        onClose={() => setConfirm(null)}
-        onConfirm={runConfirm}
-        title={confirm?.title || 'Are you sure?'}
-        message={confirm?.message}
-        confirmLabel={confirm?.confirmLabel || 'Confirm'}
-        danger
-        busy={confirming}
-      />
     </div>
   );
 }

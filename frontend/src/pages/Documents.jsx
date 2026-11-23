@@ -309,10 +309,15 @@ export default function Documents() {
           <div className="field">
             <label htmlFor="filter-department">Department</label>
             <select id="filter-department" value={departmentId} onChange={(event) => updateFilter('departmentId', event.target.value)}>
-              <option value="">All departments</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>{department.name}</option>
-              ))}
+              <option value="">All Colleges</option>
+              {departments.map((department) => {
+                // Only show the 3 academic colleges, not support offices
+                const collegeNames = ['College of Education', 'College of Technology', 'College of Hospitality and Tourism Management'];
+                if (collegeNames.includes(department.name)) {
+                  return <option key={department.id} value={department.id}>{department.name}</option>;
+                }
+                return null;
+              })}
             </select>
           </div>
           <div className="field">

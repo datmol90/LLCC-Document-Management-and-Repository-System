@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, ClipboardCheck, Building2, Users, Bell, ShieldCheck,
-  FileBarChart, Recycle, Bot, CalendarClock, DatabaseBackup, Settings, UserRound,
+  FileBarChart, Recycle, CalendarClock, DatabaseBackup, Settings, UserRound,
   LogOut, Menu, X, Search, ChevronDown, GraduationCap, Check,
 } from 'lucide-react';
 import api from '../api/client.js';
@@ -15,7 +15,6 @@ const NAV = [
   { to: '/documents', label: 'Documents', icon: FolderOpen, roles: '*' },
   { to: '/approvals', label: 'Approvals', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'DEAN', 'DEPARTMENT_HEAD'] },
   { to: '/expirations', label: 'Expirations', icon: CalendarClock, roles: '*' },
-  { to: '/assistant', label: 'AI Assistant', icon: Bot, roles: '*' },
   { to: '/analytics', label: 'Analytics & Reports', icon: FileBarChart, roles: ['SUPER_ADMIN', 'DEAN', 'DEPARTMENT_HEAD'] },
   { to: '/departments', label: 'Departments', icon: Building2, roles: '*' },
   { to: '/audit', label: 'Audit Logs', icon: ShieldCheck, roles: ['SUPER_ADMIN', 'DEAN', 'DEPARTMENT_HEAD'] },
@@ -160,7 +159,7 @@ export default function Layout() {
           <Outlet />
         </main>
         <footer className="app-footer">
-          <span>© {new Date().getFullYear()} Laguna College · LLCC Document Management System</span>
+          <span>© {new Date().getFullYear()} Lapu-Lapu City College | Document Management System</span>
           <span>Secure institutional repository</span>
         </footer>
       </div>

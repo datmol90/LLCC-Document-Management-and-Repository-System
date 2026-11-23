@@ -12,6 +12,7 @@ import { daysUntil, formatDate, formatDateTime, relativeTime } from '../utils/fo
 import '../styles/advanced.css';
 
 const EMPTY_FILTERS = { from: '', to: '', departmentId: '' };
+const COLLEGE_NAMES = ['College of Education', 'College of Technology', 'College of Hospitality and Tourism Management'];
 
 const STAT_DEFS = [
   { key: 'documents', label: 'Documents', icon: FileText },
@@ -301,10 +302,13 @@ export default function Analytics() {
             <div className="field">
               <label htmlFor="analytics-department">Department</label>
               <select id="analytics-department" value={filters.departmentId} onChange={(event) => setFilters((f) => ({ ...f, departmentId: event.target.value }))}>
-                <option value="">All departments</option>
-                {departments.map((department) => (
-                  <option key={department.id} value={department.id}>{displayValue(department.name, department.code)}</option>
-                ))}
+                <option value="">All Colleges</option>
+                {departments.map((department) => {
+                  if (COLLEGE_NAMES.includes(department.name)) {
+                    return <option key={department.id} value={department.id}>{displayValue(department.name, department.code)}</option>;
+                  }
+                  return null;
+                })}
               </select>
             </div>
             <button type="button" className="btn btn--primary" onClick={applyFilters} disabled={loading}><SlidersHorizontal size={15} /> Apply</button>

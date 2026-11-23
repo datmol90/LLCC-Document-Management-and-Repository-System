@@ -15,9 +15,10 @@ const DEPARTMENT_ROLES = ['DEPARTMENT_HEAD', 'STAFF'];
 const EMPTY_FORM = {
   name: '', email: '', password: '', role: 'STAFF', departmentId: '', isActive: true,
 };
-
 const asList = (data, key) => (Array.isArray(data) ? data : (data?.[key] || []));
 const asDeptId = (value) => (/^\d+$/.test(String(value)) ? Number(value) : value);
+
+const COLLEGE_NAMES = ['College of Education', 'College of Technology', 'College of Hospitality and Tourism Management'];
 
 export default function Users() {
   const toast = useToast();
@@ -205,97 +206,70 @@ export default function Users() {
         </div>
       )}
 
-      <Card className="card--flush">
-        <div className="filters">
-          <div className="field field--search">
-            <label htmlFor="user-search">Search</label>
-            <div className="input-with-icon">
-              <Search size={16} />
-              <input id="user-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name or email…" />
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="user-role">Role</label>
-            <select id="user-role" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
-              <option value="">All roles</option>
-              {ROLES.map((role) => <option key={role} value={role}>{role.replaceAll('_', ' ')}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="user-status">Status</label>
-            <select id="user-status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="">All statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-
-        {loading ? (
-          <Loading label="Loading users…" />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={UserRoundCog}
-            title={users.length ? 'No matching users' : 'No users yet'}
-            message={users.length ? 'Try adjusting your search or filters.' : 'Add the first account to get started.'}
-            action={!users.length && <button type="button" className="btn btn--primary btn--sm" onClick={openCreate}><Plus size={14} /> Add user</button>}
-          />
-        ) : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+      {loading ? (
+        <Loading label="Loading users…" />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={UserRoundCog}
+          title={users.length ? 'No matching users' : 'No users yet'}
+          message={users.length ? 'Try adjusting your search or filters.' : 'Add the first account to get started.'}
+          action={!users.length && <button type="button" className="btn btn--primary btn--sm" onClick={openCreate}><Plus size={14} /> Add user</button>}
+        />
+      ) : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((user) => (
+                <tr key={user.id}>
+                  <td>
+                    <div className="file-cell">
+                      <span className="avatar avatar--sm">{initials(user.name)}</span>
+                      <div className="file-cell__text">
+                        <strong>{user.name || '—'}</strong>
+                        <small>{user.email || '—'}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td><RoleBadge role={user.role} /></td>
+                  <td>{user.department?.name || <span className="muted">—</span>}</td>
+                  <td>
+                    <span className={`chip ${user.isActive === false ? 'chip--danger' : 'chip--ok'}`}>
+                      {user.isActive === false ? 'Inactive' : 'Active'}
+                    </span>
+                  </td>
+                  <td className="muted">{formatDateTime(user.createdAt)}</td>
+                  <td>
+                    <div className="row-actions">
+                      <button type="button" className="icon-btn" title="Edit user" aria-label={`Edit ${user.name}`} onClick={() => openEdit(user)}><Pencil size={15} /></button>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title={user.isActive === false ? 'Activate user' : 'Deactivate user'}
+                        aria-label={user.isActive === false ? `Activate ${user.name}` : `Deactivate ${user.name}`}
+                        disabled={user.id === currentUser?.id}
+                        onClick={() => setToggleTarget(user)}
+                      >
+                        {user.isActive === false ? <UserCheck size={15} /> : <UserX size={15} />}
+                      </button>
+                      <button type="button" className="icon-btn" title="Reset password" aria-label={`Reset password for ${user.name}`} onClick={() => openReset(user)}><KeyRound size={15} /></button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((user) => (
-                  <tr key={user.id}>
-                    <td>
-                      <div className="file-cell">
-                        <span className="avatar avatar--sm">{initials(user.name)}</span>
-                        <div className="file-cell__text">
-                          <strong>{user.name || '—'}</strong>
-                          <small>{user.email || '—'}</small>
-                        </div>
-                      </div>
-                    </td>
-                    <td><RoleBadge role={user.role} /></td>
-                    <td>{user.department?.name || <span className="muted">—</span>}</td>
-                    <td>
-                      <span className={`chip ${user.isActive === false ? 'chip--danger' : 'chip--ok'}`}>
-                        {user.isActive === false ? 'Inactive' : 'Active'}
-                      </span>
-                    </td>
-                    <td className="muted">{formatDateTime(user.createdAt)}</td>
-                    <td>
-                      <div className="row-actions">
-                        <button type="button" className="icon-btn" title="Edit user" aria-label={`Edit ${user.name}`} onClick={() => openEdit(user)}><Pencil size={15} /></button>
-                        <button
-                          type="button"
-                          className="icon-btn"
-                          title={user.isActive === false ? 'Activate user' : 'Deactivate user'}
-                          aria-label={user.isActive === false ? `Activate ${user.name}` : `Deactivate ${user.name}`}
-                          disabled={user.id === currentUser?.id}
-                          onClick={() => setToggleTarget(user)}
-                        >
-                          {user.isActive === false ? <UserCheck size={15} /> : <UserX size={15} />}
-                        </button>
-                        <button type="button" className="icon-btn" title="Reset password" aria-label={`Reset password for ${user.name}`} onClick={() => openReset(user)}><KeyRound size={15} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <Modal
         open={formOpen}
