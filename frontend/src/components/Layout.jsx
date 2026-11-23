@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, ClipboardCheck, Building2, Users, Bell, ShieldCheck,
-  FileBarChart, Recycle, CalendarClock, DatabaseBackup, Settings, UserRound,
-  LogOut, Menu, X, Search, ChevronDown, GraduationCap, Check,
+  FileBarChart, Recycle, CalendarClock, DatabaseBackup, Settings, UserRound, LogOut,
+  Menu, X, Search, ChevronDown, GraduationCap, Check,
 } from 'lucide-react';
 import api from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -25,7 +25,7 @@ const NAV = [
 ];
 
 export default function Layout() {
-  const { user, logout, hasRole, roleLabel } = useAuth();
+  const { user, logout, refresh, hasRole, roleLabel, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
@@ -57,9 +57,20 @@ export default function Layout() {
   const links = useMemo(() => NAV.filter((item) => item.roles === '*' || hasRole(...item.roles)), [hasRole]);
 
   const doLogout = async () => {
-    await logout();
-    toast.info('You have been signed out.');
+    // Show confirmation dialog
+    if (!window.confirm('Are you sure you want to sign out?')) return;
+    try {
+      await logout();
+      toast.success('You have been signed out successfully.');
+    } catch (error) {
+      toast.error('Failed to sign out. Please try again.');
+      return;
+    }
+    // Clear session and redirect
+    await refresh();
     navigate('/login', { replace: true });
+    // Prevent back navigation from restoring session
+    window.sessionStorage.removeItem('llcc_auth_session');
   };
 
   const markRead = async (id) => {
@@ -84,7 +95,7 @@ export default function Layout() {
         <div className="sidebar__brand">
           <div className="brand-mark"><GraduationCap size={22} /></div>
           <div>
-            <strong>LLCC DMS</strong>
+            <strong>LLCC</strong>
             <span>Document Repository</span>
           </div>
           <button type="button" className="icon-btn sidebar__close" onClick={() => setSidebarOpen(false)} aria-label="Close menu"><X size={19} /></button>
@@ -110,7 +121,7 @@ export default function Layout() {
           <button type="button" className="icon-btn topbar__menu" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Menu size={21} /></button>
           <form className="topbar__search" onSubmit={(e) => { e.preventDefault(); navigate(`/documents?q=${encodeURIComponent(quickSearch)}`); setSidebarOpen(false); }}>
             <Search size={18} />
-            <input value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} placeholder="Search documents, references, keywords…" aria-label="Search documents" />
+            <input value={quickSearch} onChange={(e) => setQuickSearch(e.target.value)} placeholder="Search documents, references, keywords" aria-label="Search documents" />
             <kbd>Enter</kbd>
           </form>
           <div className="topbar__actions">
@@ -127,12 +138,18 @@ export default function Layout() {
                   </div>
                   <div className="notif-list">
                     {notifications.length === 0 && <p className="muted padded">You're all caught up.</p>}
-                    {notifications.slice(0, 6).map((n) => (
-                      <button type="button" key={n.id} className={`notif-item ${n.isRead ? '' : 'notif-item--unread'}`} onClick={() => { if (!n.isRead) markRead(n.id); if (n.document?.id) navigate(`/documents/${n.document.id}`); setNotifOpen(false); }}>
-                        <span className={`notif-item__dot notif-item__dot--${n.type?.toLowerCase()}`} />
-                        <span><strong>{n.title}</strong><small>{n.message}</small><em>{relativeTime(n.createdAt)}</em></span>
-                      </button>
-                    ))}
+                    {notifications.slice(0, 6).map((n) => {
+                  const handleClick = () => {
+                    if (!n.isRead) markRead(n.id);
+                    if (n.document?.id) navigate(`/documents/${n.document.id}`);
+                    setNotifOpen(false);
+                  };
+                  return (
+                    <button type="button" key={n.id} className={`notif-item ${n.isRead ? '' : 'notif-item--unread'}`} onClick={handleClick}>
+                      <span className={`notif-item__dot notif-item__dot--${n.type?.toLowerCase()}`} /><span><strong>{n.title}</strong><small>{n.message}</small><em>{relativeTime(n.createdAt)}</em></span>
+                    </button>
+                  );
+                })}
                   </div>
                   <button type="button" className="popover__foot" onClick={() => { navigate('/notifications'); setNotifOpen(false); }}>View all notifications</button>
                 </div>
@@ -155,11 +172,12 @@ export default function Layout() {
             </div>
           </div>
         </header>
+
         <main className="page-content">
           <Outlet />
         </main>
         <footer className="app-footer">
-          <span>© {new Date().getFullYear()} Lapu-Lapu City College | Document Management System</span>
+          <span>Lapu-Lapu City College - Document Management System</span>
           <span>Secure institutional repository</span>
         </footer>
       </div>
